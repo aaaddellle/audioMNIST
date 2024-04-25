@@ -95,11 +95,56 @@ def t5_encode_text(text, name: str = 't5_base', max_length=MAX_LENGTH):
     import torch'''
 from transformers import T5Tokenizer
 
+from keras.preprocessing.image import img_to_array, load_img
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+from keras import Sequential
+from keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization
+from keras.optimizers import Adam
+from keras.models import Model
+
+def sequential():
+    model = Sequential()
+    model.add(Conv2D(filters=32, kernel_size=(3, 3), activation="relu", input_shape=(28, 28, 1), name='Layer1'))
+    #model.add(BatchNormalization())
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), activation="relu", name='Layer2'))
+    #model.add(BatchNormalization())
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Conv2D(filters=128, kernel_size=(3, 3), activation="relu", name='Layer3'))
+    #model.add(BatchNormalization())
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+
+    model.add(Dense(units=256, activation="sigmoid", name="hidden_layer1")) #sigmoid - hidden layer
+    #model.add(BatchNormalization())
+    model.add(Dense(units=128, activation="relu", name="layer2"))
+    #model.add(BatchNormalization())
+    model.add(Dense(units=10, activation="softmax", name="layer3"))
+    epochs = 10
+
+    model.compile(
+        optimizer=Adam(),
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+    model.summary()
+    feature_extraction_model = Model(inputs=model.input, outputs=model.get_layer('Layer3').output)
+    return model, feature_extraction_model
+
+
+
 def custom_encode_text(features, tokenizer, max_length):
-    # Tokenize the text features using the provided tokenizer
+    # Tokenize the text features using the provided tokenizer 
+    features = feature_extraction_model.predict(features)
     tokenized_features = tokenizer(features, max_length=max_length, padding=True, truncation=True, return_tensors='pt')
     
     # Return the tokenized features tensor
     return tokenized_features.input_ids, tokenized_features.attention_mask
+    
+model, feature_extraction_model = sequential()
+    
 
 
